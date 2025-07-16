@@ -9,6 +9,7 @@ In order to run this application execute the following steps:
 1. Create a copy of the `configuration.default.cpp` file, acting as a template. Name the copy to `configuration.cpp`.
 2. Open `configuration.cpp` for editing.
 3. Fill in the WiFi’s data with the  information provided by your workshop host:
+   - Workshop ID
    - SSID 
    - password 
 4. Fill in the MQTT data as assigned by your workshop host:
