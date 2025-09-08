@@ -1,18 +1,28 @@
-/*                                                                                                           *
- *  Thank you for building EduDemoS!                                                                         *
- *                                                                                                           *
- *  This file is part of the EduDemoS Project and is licensed under the Creative Commons Attribution         *
- *  NonCommercial ShareAlike 4.0 International license (CC BY-NC-SA 4.0). For full license details, see the  *
- *  license.txt file or visit https://creativecommons.org/licenses/by-nc-sa/4.0/                             *     
- *                                                                                                           *
- *  EduDemoS is co-funded by the European Union. You can find more information at edudemos.eu                *                                                         
- *                                                                                                           *
- *  +-----------------------------------------------------------------------------------------------------+  *
- *                                                                                                           *
- *  Upload this code to your ESP8266 board, especially if you have used it before. Connect your Servo Motor  *
- *  to Pin D5 and power. This will rotate it to the 90deg position. This code will also reset the permanent  *
- *  storage used by the Sun-Tracker to remember the last side of the zero-position it was on. This prevents  *
- *  tangling up the wires inside the Stem.                                                                   */
+/*
+* This file is part of the EduDemoS Sun-Tracker which is
+* co-funded by the European Union.
+* Copyright (C) 2025  Gerda Stetter Stiftung - Technik macht Spaß!
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+
+*  +-----------------------------------------------------------------------------------------------------+  *
+*                                                                                                           *
+*  Upload this code to your ESP8266 board, especially if you have used it before. Connect your Servo Motor  *
+*  to Pin D5 and power. This will rotate it to the 90deg position. This code will also reset the permanent  *
+*  storage used by the Sun-Tracker to remember the last side of the zero-position it was on. This prevents  *
+*  tangling up the wires inside the Stem.                                                                   */
 
 
 // Includes:

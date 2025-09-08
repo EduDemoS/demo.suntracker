@@ -1,4 +1,4 @@
-# Solar Demonstrator "Sun-Tracker" ( :globe_with_meridians: IoT-Ready )
+# Solar Demonstrator "Sun-Tracker" ( 🌐 IoT-Ready )
 
 This sketch (`.ino`-file) contains a modified version of the original sun_tracker-firmware, augmented with a WiFi/MQTT-based uplink to an MQTT broker.
 
@@ -10,32 +10,34 @@ In order to run this application execute the following steps:
 2. Open `configuration.cpp` for editing.
 3. Fill in the WiFi’s data with the  information provided by your workshop host:
    - Workshop ID
-   - SSID 
-   - password 
+   - SSID
+   - password
 4. Fill in the MQTT data as assigned by your workshop host:
    - Team ID
-   - Username 
+   - Username
    - Password
 5. Doublecheck the MQTT configuration with your workshop instructions:
-   - Server 
-   - Port 
+   - Server
+   - Port
 
 ## MQTT concept
 
 This project exposes multiple datapoints that can be used. Inputs and outputs are separated by their path:
+
 - Inputs: `ctrl/...`
 - Outputs `data/...`
 
 The available datapoints are:
-| **Key**     | **Direction** | **MQTT path**    | **Format**              | **Description**                                                    |
-| :---------- | :-----------: | :--------------- | :---------------------- | :----------------------------------------------------------------- |
-| _azimuth_   |      Out      | `data/azimuth`   | [Scalar](#scalars)      | Number of ticks, the sunflower is rotated around the Z axis        |
-| _elevation_ |      Out      | `data/elevation` | [Scalar](#scalars)      | The sunflower head's angle around the X axis                       |
-| _heartbeat_ |      Out      | `data/heartbeat` | [Heartbeat](#heartbeat) | Heartbeat signal sent every second to signal activity              |
-| _ldr_       |      Out      | `data/ldr`       | [LDR](#ldr)             | All four LDR values building the foundation for the solar tracking |
-| _mirror_    |      Out      | `data/mirror`    | [Plain](#plain-values)  | see [Mirror feature](#mirror-feature)                              |
-| _mirror_    |      In       | `ctrl/mirror`    | [Plain](#plain-values)  | see [Mirror feature](#mirror-feature)                              |
-| _solar_     |      Out      | `data/solar`     | [Scalar](#scalars)      | Voltage produced on the solar cell                                 |
+
+| **Key** | **Direction** | **MQTT path** | **Format**     | **Description**                                              |
+| :------------ | :-----------------: | :------------------ | :------------------- | :----------------------------------------------------------------- |
+| _azimuth_   |         Out         | `data/azimuth`    | [Scalar](#scalars)      | Number of ticks, the sunflower is rotated around the Z axis        |
+| _elevation_ |         Out         | `data/elevation`  | [Scalar](#scalars)      | The sunflower head's angle around the X axis                       |
+| _heartbeat_ |         Out         | `data/heartbeat`  | [Heartbeat](#heartbeat) | Heartbeat signal sent every second to signal activity              |
+| _ldr_       |         Out         | `data/ldr`        | [LDR](#ldr)             | All four LDR values building the foundation for the solar tracking |
+| _mirror_    |         Out         | `data/mirror`     | [Plain](#plain-values)  | see[Mirror feature](#mirror-feature)                                  |
+| _mirror_    |         In         | `ctrl/mirror`     | [Plain](#plain-values)  | see[Mirror feature](#mirror-feature)                                  |
+| _solar_     |         Out         | `data/solar`      | [Scalar](#scalars)      | Voltage produced on the solar cell                                 |
 
 ### Plain values
 
@@ -56,6 +58,7 @@ Objects of such a structure are automatically interpret by the EduDemoS ThingsBo
 ### Heartbeat
 
 The heartbeat signal is a JSON-object consisting of two keys:
+
 - state - a toggling string-value switching between `on` and `off` automatically.
 - mirror - same value as the datapoint `data/mirror`
 
@@ -90,6 +93,17 @@ The service follows the following logic:
 Whenever a value is set for `ctrl/mirror`, the value is interpret by the following rule:
 
 |  `ctrl/mirror`  | `data/mirror` |
-| :-------------: | :-----------: |
-|       on        |      off      |
-| _anything else_ |      on       |
+| :---------------: | :-------------: |
+|        on        |       off       |
+| _anything else_ |       on       |
+
+# Licensing
+Please note: different licenses apply depending on the type of content.
+
+All documents and 3d models (files ending with .pdf and .stl) are licensed under [CC-BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+
+All files containing code are licensed under [GNU GPL V3](https://www.gnu.org/licenses/gpl-3.0.txt).
+
+# Disclaimer:
+
+Funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or the European Education and Culture Executive Agency (EACEA). Neither the European Union nor EACEA can be held responsible for them.

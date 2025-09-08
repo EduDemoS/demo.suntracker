@@ -1,16 +1,26 @@
-/*                                                                                                           *
- *  Thank you for building EduDemoS!                                                                         *
- *                                                                                                           *
- *  This file is part of the EduDemoS Project and is licensed under the Creative Commons Attribution         *
- *  NonCommercial ShareAlike 4.0 International license (CC BY-NC-SA 4.0). For full license details, see the  *
- *  license.txt file or visit https://creativecommons.org/licenses/by-nc-sa/4.0/                             *     
- *                                                                                                           *
- *  EduDemoS is co-funded by the European Union. You can find more information at edudemos.eu                *                                                         
- *                                                                                                           *
- *  +-----------------------------------------------------------------------------------------------------+  *
- *                                                                                                           *
- *  The algorithm is based on the Arduino Solar Tracker guide:                                               *
- *  https://projecthub.arduino.cc/Aboubakr_Elhammoumi/arduino-solar-tracker-77347b                           */
+/*
+* This file is part of the EduDemoS Sun-Tracker which is
+* co-funded by the European Union.
+* Copyright (C) 2025  Gerda Stetter Stiftung - Technik macht Spaß!
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+
+*  +-----------------------------------------------------------------------------------------------------+  *
+*                                                                                                           *
+*  The algorithm is based on the Arduino Solar Tracker guide:                                               *
+*  https://projecthub.arduino.cc/Aboubakr_Elhammoumi/arduino-solar-tracker-77347b                           */
 
 
 // Include Libraries:
