@@ -211,6 +211,14 @@ bool MqttClient::publish(const String &topic, const void *data, size_t len, bool
  * @copydoc bool MqttClient::publish(const char *topic, const void *data, size_t len, bool retain)
  */
 bool MqttClient::publish(const String &topic, const JsonDocument& data, bool retain) {
+#if defined (ESP8266)
+    /* For some  reason, on the ESP8266-platform this consumes 3s instead of 
+       a few milliseconds. Hence switch to serializeJson and send the string 
+       instead (speeds it up quite a bit) */
+    String payload;
+    serializeJson(data, payload);
+    return publish(topic, payload, retain);
+#else
     size_t len = measureJson(data);
     bool started = m_client.beginPublish(TopicFullyQualifyIfNeeded(topic).c_str(), len, retain);
     
@@ -219,6 +227,7 @@ bool MqttClient::publish(const String &topic, const JsonDocument& data, bool ret
     serializeJson(data, m_client);
 
     return m_client.endPublish() == 1;
+#endif
 }
 
 /**
