@@ -1,0 +1,22 @@
+{
+  "name": "SimpleStateProcessor",
+  "version": "0.5.5",
+  "description": "A simple state machine processor",
+  "keywords": "FSM, state machine, finite state machine",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/holisticsolutions/SimpleStateProcessor"
+  },
+  "authors": [
+    {
+      "name": "Ueli Niederer",
+      "email": "ueli.niederer@niederer-engineering.ch",
+      "url": "https://www.linkedin.com/in/ueli-niederer",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/holisticsolutions/SimpleStateProcessor",
+  "frameworks": "*",
+  "platforms": "*"
+}

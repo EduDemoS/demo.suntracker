@@ -1,0 +1,31 @@
+{
+  "name": "MqttClient",
+  "version": "1.0.2",
+  "description": "A facade for PubSubClient providing a slightly more abstract interface",
+  "keywords": "FSM, state machine, finite state machine",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/holisticsolutions/Arduino.MqttClient.git"
+  },
+  "authors":
+  [
+    {
+      "name": "Ueli Niederer",
+      "email": "ueli.niederer@niederer-engineering.ch",
+      "url": "https://www.linkedin.com/in/ueli-niederer",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/holisticsolutions/Arduino.MqttClient",
+  "dependencies": {
+    "knolleary/PubSubClient": "^2.8",
+    "bblanchon/ArduinoJson": "^7.4.1",
+    "holisticsolutions/SimpleStateProcessor": "^0.5.0",
+    "holisticsolutions/SimpleSoftTimer": "^1.0.0",
+    "holisticsolutions/WiFiManager": "^0.6.0"
+  },
+  "frameworks": "arduino",
+  "platforms": "*"
+}

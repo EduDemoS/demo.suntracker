@@ -1,0 +1,28 @@
+{
+  "name": "WiFiManager",
+  "version": "0.6.2",
+  "description": "Simplified WiFi connection manager capable of reconnecting a broken connection, etc.",
+  "keywords": "WiFi, ESP, Espressif, Connection Manager",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/holisticsolutions/Arduino.WiFiManager.git"
+  },
+  "authors":
+  [
+    {
+      "name": "Ueli Niederer",
+      "email": "ueli.niederer@niederer-engineering.ch",
+      "url": "https://www.linkedin.com/in/ueli-niederer",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/holisticsolutions/Arduino.WiFiManager",
+  "dependencies": {
+    "holisticsolutions/SimpleStateProcessor": "^0.5.0",
+    "holisticsolutions/SimpleSoftTimer": "^1.0.0"
+  },
+  "frameworks": "arduino",
+  "platforms": "espressif32, espressif8266"
+}
