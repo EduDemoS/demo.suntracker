@@ -83,18 +83,30 @@ typedef struct sLimitSwitchData {
   bool isPressed;
 }tLimitSwitchData;
 
+/*! \brief  Holds all stepper dependent data. 
+
+            While members such as phase pins or pattern are considered configuration
+            and thus immutable during runtime, the rest of the struct is divided into
+            parts shared with the ISR and parts that are not. */
 typedef struct sStepperData {
   Ticker *       timer;
+
   const uint8_t *phase_pins;
   uint8_t        phase_pins_len;
 
   const uint8_t *pattern;
   uint8_t        pattern_len;
-  int8_t         pattern_current;
 
-  int32_t        position_target;
-  int32_t        position;
-  int8_t         direction;
+  /*! \brief  Variables shared between two tasks (ISR and main loop)
+
+      \warning Access to this area shall always be wrapped within a critical section
+               or only take place from an ISR! */
+  struct sStepperDataUnsafe {
+    int8_t         pattern_current;
+    int32_t        position_target;
+    int32_t        position;
+    int8_t         direction;
+  }unsafe;
 }tStepperData;
 
 static void TaskUpdateLcd(void);
@@ -139,9 +151,9 @@ static void           StepperPositionZero(void);
 static bool           StepperRunning(void);
 static void           StepperStop(void);
 
-static void           StepperDirectionSet(bool ccw);
 static void           StepperPatternWrite(uint8_t pattern);
 static bool           StepperSideWrite(void);
+static void           StepperStopUnsafe(void);
        void IRAM_ATTR StepperTick(void);
 
 int  readPCFChannel(int channelID);
@@ -1034,14 +1046,14 @@ static void StepperSetup(void) {
   while (HalfStepPattern[stepper.pattern_len] != 0) {
     stepper.pattern_len++;
   }
-  
+
   for (size_t i = 0;i < stepper.phase_pins_len;i++) {
     pinMode(stepper.phase_pins[i], OUTPUT);
   }
 
-  stepper.pattern_current = 0;
-  stepper.direction = 0;
-  stepper.position = 0;
+  stepper.unsafe.pattern_current = 0;
+  stepper.unsafe.direction = 0;
+  stepper.unsafe.position = 0;
 
   stepper.timer->attach(0.001, StepperTick);
 }
@@ -1052,25 +1064,24 @@ static void StepperSetup(void) {
                 - false for clock wise motion 
                 - true for counter clock wise motion */
 static void StepperMove(bool ccw) {
-  stepper.position_target = ccw ? INT32_MIN : INT32_MAX;  
-  StepperDirectionSet(ccw);
-}
-
-static void StepperDirectionSet(bool ccw) {
-  stepper.direction = ccw ? -1 : 1;
+  StepperMoveTo(ccw ? INT32_MIN : INT32_MAX);
 }
 
 /*! \brief  Moves the stepper to an absolute position
 
     \param[in]  position [steps] Position to move to */
 static void StepperMoveTo(int32_t position) {
-  stepper.position_target = position;
-  if (stepper.position < stepper.position_target) {
-    StepperDirectionSet(false);
+  noInterrupts();
+  {
+    stepper.unsafe.position_target = position;
+    if (stepper.unsafe.position < stepper.unsafe.position_target) {
+      stepper.unsafe.direction = 1;
+    }
+    else if (stepper.unsafe.position > stepper.unsafe.position_target) {
+      stepper.unsafe.direction = -1;
+    }
   }
-  else if (stepper.position > stepper.position_target) {
-    StepperDirectionSet(true);
-  }
+  interrupts();
 }
 
 /*! \brief  Moves the stepper relative to the current position
@@ -1079,24 +1090,47 @@ static void StepperMoveTo(int32_t position) {
                                   - Positive numbers: clockwise turns
                                   - Negative numbers: counter clock wise turns */
 static void StepperMoveBy(int32_t increment) {
-  StepperMoveTo(stepper.position + increment);
+  StepperMoveTo(StepperPositionGet() + increment);
 }
 
 /*! \brief  Stops the stepper's motion. */
 static void StepperStop(void) {
-  stepper.direction = 0;
+  noInterrupts();
+  {
+    StepperStopUnsafe();
+  }
+  interrupts();
+}
+
+/*! \brief  Stops the stepper's motion.
+
+    \warning  Only call this within a critical section or an ISR. */
+static void StepperStopUnsafe(void) {
+  stepper.unsafe.direction = 0;
 }
 
 /*! \return [steps] current position. 
             - Positive numbers: clockwise turns
             - Negative numbers: counter clock wise turns */
 static int32_t StepperPositionGet(void) {
-  return stepper.position;
+  int32_t localPosition = 0;
+
+  noInterrupts();
+  {
+    localPosition = stepper.unsafe.position;
+  }
+  interrupts();
+
+  return localPosition;
 }
 
 /*! \brief  Set the current position to zero */
 static void StepperPositionZero(void) {
-  stepper.position = 0;
+  noInterrupts();
+  {
+    stepper.unsafe.position = 0;
+  }
+  interrupts();
 }
 
 /*! \brief  Indicates whether the stepper is running or not
@@ -1107,7 +1141,15 @@ static void StepperPositionZero(void) {
             - true if the stepper is still running
             - false if the stepper is idle */
 static bool StepperRunning(void) {
-  return stepper.direction != 0;
+  int8_t localDirection = 0;
+
+  noInterrupts();
+  {
+    localDirection = stepper.unsafe.direction;
+  }
+  interrupts();
+
+  return localDirection != 0;
 }
 
 /*! \brief  ISR taking care of stepper pattern output and position control. 
@@ -1116,38 +1158,38 @@ static bool StepperRunning(void) {
             has to be rather constant. This interrupt service routine serves
             as a pace maker as well as control "algorithm" for the position. */
 void StepperTick(void) {
-  if (stepper.direction > 0) {
-    stepper.pattern_current++;
+  if (stepper.unsafe.direction > 0) {
+    stepper.unsafe.pattern_current++;
     /* Wrap at the upper end */
-    if (stepper.pattern_current > stepper.pattern_len) {
-      stepper.pattern_current = 0;
+    if (stepper.unsafe.pattern_current > stepper.pattern_len) {
+      stepper.unsafe.pattern_current = 0;
     } 
 
     /* Saturate at the limits in order to prevent warp around effects. */
-    if (stepper.position < INT32_MAX) {
-      stepper.position++;
+    if (stepper.unsafe.position < INT32_MAX) {
+      stepper.unsafe.position++;
     }
   }
-  else if (stepper.direction < 0) {
-    stepper.pattern_current--;
+  else if (stepper.unsafe.direction < 0) {
+    stepper.unsafe.pattern_current--;
     /* Wrap at the lower end */
-    if (stepper.pattern_current < 0) {
-      stepper.pattern_current = stepper.pattern_len;
+    if (stepper.unsafe.pattern_current < 0) {
+      stepper.unsafe.pattern_current = stepper.pattern_len;
     }
 
     /* Saturate at the limits in order to prevent warp around effects. */
-    if (stepper.position > INT32_MIN) {
-      stepper.position--;
+    if (stepper.unsafe.position > INT32_MIN) {
+      stepper.unsafe.position--;
     }
   }
 
-  if (stepper.direction != 0) {
-    StepperPatternWrite(stepper.pattern[stepper.pattern_current]);
+  if (stepper.unsafe.direction != 0) {
+    StepperPatternWrite(stepper.pattern[stepper.unsafe.pattern_current]);
     
-    if ((stepper.position_target != INT32_MIN)
-        && (stepper.position_target != INT32_MAX) 
-        && (stepper.position == stepper.position_target)) {
-      StepperStop();
+    if ((stepper.unsafe.position_target != INT32_MIN)
+        && (stepper.unsafe.position_target != INT32_MAX) 
+        && (stepper.unsafe.position == stepper.unsafe.position_target)) {
+      StepperStopUnsafe();
     }
   }
 }
