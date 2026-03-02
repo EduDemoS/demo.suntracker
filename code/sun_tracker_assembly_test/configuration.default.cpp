@@ -72,7 +72,7 @@
 #define SERVO_INCREMENT     45      // [deg] Angle per step
 
 // Stepper parameters:
-#define STEPPER_STEPS_PER_REVOLUTION      24000  // [steps] Maximum number of steps per revolution driven
+#define STEPPER_STEPS_PER_REVOLUTION      21000  // [steps] Maximum number of steps per revolution driven
 #define STEPPER_STEPS_PER_REVOLUTION_MAX  30000  // [steps] Maximum number of steps expected per revolution
 
 // EEPROM configuration

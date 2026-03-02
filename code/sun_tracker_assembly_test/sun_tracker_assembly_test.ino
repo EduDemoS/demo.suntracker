@@ -1047,6 +1047,11 @@ static void StepperSetup(void) {
     stepper.pattern_len++;
   }
 
+  /* Add a guard to prevent erroneus behaviour of the stepper's ISR. */
+  while (stepper.pattern_len == 0) {
+    Serial.println("Error: There is no stepper pattern configured!");
+  }
+
   for (size_t i = 0;i < stepper.phase_pins_len;i++) {
     pinMode(stepper.phase_pins[i], OUTPUT);
   }
@@ -1161,7 +1166,7 @@ void StepperTick(void) {
   if (stepper.unsafe.direction > 0) {
     stepper.unsafe.pattern_current++;
     /* Wrap at the upper end */
-    if (stepper.unsafe.pattern_current > stepper.pattern_len) {
+    if (stepper.unsafe.pattern_current >= stepper.pattern_len) {
       stepper.unsafe.pattern_current = 0;
     } 
 
@@ -1174,7 +1179,7 @@ void StepperTick(void) {
     stepper.unsafe.pattern_current--;
     /* Wrap at the lower end */
     if (stepper.unsafe.pattern_current < 0) {
-      stepper.unsafe.pattern_current = stepper.pattern_len;
+      stepper.unsafe.pattern_current = stepper.pattern_len - 1;
     }
 
     /* Saturate at the limits in order to prevent warp around effects. */
