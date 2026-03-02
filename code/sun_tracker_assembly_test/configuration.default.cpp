@@ -35,7 +35,7 @@
 #define MQTT_SERVER             "iot-mqtt-broker.gbssg.ch"  // MQTT Broker Address
 #define MQTT_PORT               8883                        // MQTT Broker Port
 #define MQTT_CLIENT_ID          MQTT_TEAM_ID                // Thingspeak Client ID (identical to username)
-#define MQTT_UPDATE_PERIOD      2000                        // [ms] Time to wait before sending data to MQTT
+#define MQTT_UPDATE_PERIOD      1000                        // [ms] Time to wait before sending data to MQTT
 #define MQTT_MAX_ATTEMPTS       10
 
 // Serial Settings:
@@ -70,6 +70,10 @@
 #define SERVO_UPDATE_PERIOD 20      // [ms]  Update period for servo position
 #define SERVO_ANGLE_FINAL   90      // [deg] Angle to be set upon end of servo test
 #define SERVO_INCREMENT     45      // [deg] Angle per step
+
+// Stepper parameters:
+#define STEPPER_STEPS_PER_REVOLUTION      24000  // [steps] Maximum number of steps per revolution driven
+#define STEPPER_STEPS_PER_REVOLUTION_MAX  30000  // [steps] Maximum number of steps expected per revolution
 
 // EEPROM configuration
 #define EEPROM_SIZE           2

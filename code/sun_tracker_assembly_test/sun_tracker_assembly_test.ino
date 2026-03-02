@@ -1,4 +1,7 @@
+#include <Arduino.h>
 #include "configuration.cpp"
+
+#include <Ticker.h>
 
 #include <MqttClient.h>
 #include <WiFiSecureClientProvider.h>
@@ -80,6 +83,20 @@ typedef struct sLimitSwitchData {
   bool isPressed;
 }tLimitSwitchData;
 
+typedef struct sStepperData {
+  Ticker *       timer;
+  const uint8_t *phase_pins;
+  uint8_t        phase_pins_len;
+
+  const uint8_t *pattern;
+  uint8_t        pattern_len;
+  int8_t         pattern_current;
+
+  int32_t        position_target;
+  int32_t        position;
+  int8_t         direction;
+}tStepperData;
+
 static void TaskUpdateLcd(void);
 static void TaskUpdateServo(void);
 
@@ -106,19 +123,29 @@ static int  CheckStateToJson(tCheckState state);
 
 static bool DeviceScanFor(byte address);
 
-static void LimitSwitchSetup(void);
-static void LimitSwitchReset(void);
+static void    LimitSwitchSetup(void);
+static void    LimitSwitchReset(void);
 void IRAM_ATTR LimitSwitchISR();
 
 static void ServoSetup(void);
 static void SolarSetup(void);
-static void StepperSetup(void);
-static bool StepperSideWrite(void);
+
+static void           StepperSetup(void);
+static void           StepperMove(bool ccw = false);
+static void           StepperMoveBy(int32_t position);
+static void           StepperMoveTo(int32_t position);
+static int32_t        StepperPositionGet(void);
+static void           StepperPositionZero(void);
+static bool           StepperRunning(void);
+static void           StepperStop(void);
+
+static void           StepperDirectionSet(bool ccw);
+static void           StepperPatternWrite(uint8_t pattern);
+static bool           StepperSideWrite(void);
+       void IRAM_ATTR StepperTick(void);
 
 int  readPCFChannel(int channelID);
 bool scanForDevice(byte address);
-
-void IRAM_ATTR stepperZeroISR();
 
 static const tSSP_State TestStates[] = {
     SSP_STATE_DESCRIBE("Confirm switch  ", TestConfirmSwitch),
@@ -170,7 +197,6 @@ static bool                 test_confirmed = false;
 static size_t               test_state_current = 0;
 
 static SimpleStateProcessor stepper_fsm(STEPPER_ST_CCW_ZERO, StepperStates, 0);
-static bool                 stepper_state_confirmed = false;
 
 static volatile tLimitSwitchData LimitSwitchData;
 
@@ -191,8 +217,8 @@ static SimpleSoftTimer    servo_ctrl_timeout(SERVO_UPDATE_PERIOD);
 
 static int                servo_test_pos_inc = SERVO_INCREMENT;
 
-AccelStepper stepper(AccelStepper::FULL4WIRE, STEPPER_PIN_0, STEPPER_PIN_2, STEPPER_PIN_1, STEPPER_PIN_3);
-static bool  stepper_zero;
+static volatile tStepperData stepper;
+static          bool         stepper_zero;
 
 void setup() {
   // Double the CPU Frequency:
@@ -248,7 +274,7 @@ void loop() {
 
   test_fsm.run();
 
-  // Reset limit switch event
+  // Reset test confirmation event
   test_confirmed = false;
 
   TaskUpdateServo();
@@ -651,24 +677,27 @@ static SSP_STATE_HANDLER(StepperCCWZero) {
   switch (reason) {
     case SSP_REASON_ENTER: {
       print_lcd(1, 0, "Zeroing CCW     ");
-      stepper.setCurrentPosition(0);
-      stepper.setMaxSpeed(700);
-      stepper.setAcceleration(1000);
-      stepper.moveTo(-1 * 28 * 180);
+      StepperPositionZero();
+
+      // Go for a half turn to find the zero switch.
+      StepperMoveTo(-1 * STEPPER_STEPS_PER_REVOLUTION_MAX / 2);
       break;
     }
 
     case SSP_REASON_DO: {
-      
       if (LimitSwitchData.isPressed) {
-        stepper.setCurrentPosition(0);
+        StepperStop();
+        StepperPositionZero();
         LimitSwitchData.isPressed = false;
 
         fsm->NextStateSet(STEPPER_ST_TURN_CW); 
         break;
       }
 
-      if(!stepper.run()) {
+      /* If we didn't find the zero switch after a bit more than half a 
+         revolution, we gotta look to the other side in order to prevent 
+         entangeling of wires in case they are already mounted. */
+      if(!StepperRunning()) {
         fsm->NextStateSet(STEPPER_ST_CW_ZERO);
       }
       break;
@@ -686,18 +715,26 @@ static SSP_STATE_HANDLER(StepperCWZero) {
   switch (reason) {
     case SSP_REASON_ENTER: {
       print_lcd(1, 0, "Zeroing CW     ");
-      stepper.move(1 * 28 * 360);
+
+      // As we didn't find the zero switch during half CCW turn, 
+      // let's move a complete revolution CW so we hopefully find
+      // it.
+      StepperMoveBy(STEPPER_STEPS_PER_REVOLUTION_MAX);
       break;
     }
 
     case SSP_REASON_DO: {
-      stepper.run();
-        
       if (LimitSwitchData.isPressed) {
-        stepper.setCurrentPosition(0);
+        StepperPositionZero();
         LimitSwitchData.isPressed = false;
 
-        fsm->NextStateSet(STEPPER_ST_TURN_CW);
+        fsm->NextStateSet(STEPPER_ST_TURN_CCW);
+      }
+
+      /* If we actually reach the desired position, we have missed the zero 
+         switch, wich might be a sign, that the switch is not yet present. */
+      if (!StepperRunning()) {
+        print_lcd(1, 0, "Err: Limit miss");
       }
       break;
     }
@@ -714,13 +751,13 @@ static SSP_STATE_HANDLER(StepperTurnCW) {
   switch (reason) {
     case SSP_REASON_ENTER: {
       print_lcd(1, 0, "Turning CW      ");
-      stepper.moveTo(1 * 28 * 360);
+      StepperMoveTo(STEPPER_STEPS_PER_REVOLUTION / 2);
       break;
     }
 
     case SSP_REASON_DO: {
-
-      if(!stepper.run()) {
+      if (!StepperRunning()) {
+        Serial.printf("Turning at: %d\n", StepperPositionGet());
         fsm->NextStateSet(STEPPER_ST_TURN_CCW);
         break;
       }
@@ -743,12 +780,13 @@ static SSP_STATE_HANDLER(StepperTurnCCW) {
   switch (reason) {
     case SSP_REASON_ENTER: {
       print_lcd(1, 0, "Turning CCW     ");
-      stepper.moveTo(0);
+      StepperMoveTo(-1 * (STEPPER_STEPS_PER_REVOLUTION / 2));
       break;
     }
 
-    case SSP_REASON_DO: {
-      if(!stepper.run()) {
+    case SSP_REASON_DO: {      
+      if (!StepperRunning()) {
+        Serial.printf("Turning at: %d\n", StepperPositionGet());
         fsm->NextStateSet(STEPPER_ST_TURN_CW);
         break;
       }
@@ -771,12 +809,12 @@ static SSP_STATE_HANDLER(StepperZero) {
   switch (reason) {
     case SSP_REASON_ENTER: {
       print_lcd(1, 0, "Zeroing...      ");
-      stepper.moveTo(0);
+      StepperMoveTo(0);
       break;
     }
 
     case SSP_REASON_DO: {
-      if(!stepper.run()) {
+      if(!StepperRunning()) {
         stepper_zero = true;
         break;
       }
@@ -955,7 +993,7 @@ static void LimitSwitchReset(void) {
 void IRAM_ATTR LimitSwitchISR()
 {
   // Debounce switch
-  if (millis() - LimitSwitchData.lastPressTime > LIMITSWITCH_DEBOUNCE_TIME) {
+  if ((millis() - LimitSwitchData.lastPressTime) > LIMITSWITCH_DEBOUNCE_TIME) {
     LimitSwitchData.isPressed = true;
     LimitSwitchData.lastPressTime = millis();
   }
@@ -970,15 +1008,164 @@ static void SolarSetup(void) {
 }
 
 static void StepperSetup(void) {
+  static const uint8_t StepperPhasePins[] = {
+    STEPPER_PIN_0, 
+    STEPPER_PIN_1, 
+    STEPPER_PIN_2, 
+    STEPPER_PIN_3, 
+  };
+
+  static const uint8_t HalfStepPattern[] = {
+    0x03, 0x02, 0x06, 0x04, 0x0C, 0x08, 0x09, 0x01, 0x00
+  };
+
   LimitSwitchSetup();
 
-  pinMode(STEPPER_PIN_0,    OUTPUT);
-  pinMode(STEPPER_PIN_1,    OUTPUT);
-  pinMode(STEPPER_PIN_2,    OUTPUT);
-  pinMode(STEPPER_PIN_3,    OUTPUT);
+  memset((void *)&stepper, 0, sizeof(stepper));
+
+  stepper.timer = new Ticker();
+
+  stepper.phase_pins = StepperPhasePins;
+  stepper.phase_pins_len = sizeof(StepperPhasePins)/sizeof(StepperPhasePins[0]);
+  stepper.pattern = HalfStepPattern;
+  stepper.pattern_len = 0;
+
+  /* Count the number of steps */
+  while (HalfStepPattern[stepper.pattern_len] != 0) {
+    stepper.pattern_len++;
+  }
+  
+  for (size_t i = 0;i < stepper.phase_pins_len;i++) {
+    pinMode(stepper.phase_pins[i], OUTPUT);
+  }
+
+  stepper.pattern_current = 0;
+  stepper.direction = 0;
+  stepper.position = 0;
+
+  stepper.timer->attach(0.001, StepperTick);
 }
 
-// Writes the signature and the current side of the stepper to permanent storage.
+/*! \brief  Sets the stepper in motion without limitation
+
+    \param[in]  ccw 
+                - false for clock wise motion 
+                - true for counter clock wise motion */
+static void StepperMove(bool ccw) {
+  stepper.position_target = ccw ? INT32_MIN : INT32_MAX;  
+  StepperDirectionSet(ccw);
+}
+
+static void StepperDirectionSet(bool ccw) {
+  stepper.direction = ccw ? -1 : 1;
+}
+
+/*! \brief  Moves the stepper to an absolute position
+
+    \param[in]  position [steps] Position to move to */
+static void StepperMoveTo(int32_t position) {
+  stepper.position_target = position;
+  if (stepper.position < stepper.position_target) {
+    StepperDirectionSet(false);
+  }
+  else if (stepper.position > stepper.position_target) {
+    StepperDirectionSet(true);
+  }
+}
+
+/*! \brief  Moves the stepper relative to the current position
+
+    \param[in]  increment [steps] Number of steps to run
+                                  - Positive numbers: clockwise turns
+                                  - Negative numbers: counter clock wise turns */
+static void StepperMoveBy(int32_t increment) {
+  StepperMoveTo(stepper.position + increment);
+}
+
+/*! \brief  Stops the stepper's motion. */
+static void StepperStop(void) {
+  stepper.direction = 0;
+}
+
+/*! \return [steps] current position. 
+            - Positive numbers: clockwise turns
+            - Negative numbers: counter clock wise turns */
+static int32_t StepperPositionGet(void) {
+  return stepper.position;
+}
+
+/*! \brief  Set the current position to zero */
+static void StepperPositionZero(void) {
+  stepper.position = 0;
+}
+
+/*! \brief  Indicates whether the stepper is running or not
+
+            Can be used to detect whether the position has been reached
+
+    \return 
+            - true if the stepper is still running
+            - false if the stepper is idle */
+static bool StepperRunning(void) {
+  return stepper.direction != 0;
+}
+
+/*! \brief  ISR taking care of stepper pattern output and position control. 
+
+            For a reliable stepper operation, the frequency for phase shifts
+            has to be rather constant. This interrupt service routine serves
+            as a pace maker as well as control "algorithm" for the position. */
+void StepperTick(void) {
+  if (stepper.direction > 0) {
+    stepper.pattern_current++;
+    /* Wrap at the upper end */
+    if (stepper.pattern_current > stepper.pattern_len) {
+      stepper.pattern_current = 0;
+    } 
+
+    /* Saturate at the limits in order to prevent warp around effects. */
+    if (stepper.position < INT32_MAX) {
+      stepper.position++;
+    }
+  }
+  else if (stepper.direction < 0) {
+    stepper.pattern_current--;
+    /* Wrap at the lower end */
+    if (stepper.pattern_current < 0) {
+      stepper.pattern_current = stepper.pattern_len;
+    }
+
+    /* Saturate at the limits in order to prevent warp around effects. */
+    if (stepper.position > INT32_MIN) {
+      stepper.position--;
+    }
+  }
+
+  if (stepper.direction != 0) {
+    StepperPatternWrite(stepper.pattern[stepper.pattern_current]);
+    
+    if ((stepper.position_target != INT32_MIN)
+        && (stepper.position_target != INT32_MAX) 
+        && (stepper.position == stepper.position_target)) {
+      StepperStop();
+    }
+  }
+}
+
+/*! \brief Converts a given pattern into actual output for all phases
+    \param[in]  pattern   Bitmask which phases have to be turned on. 
+                          Bitnumber => Output number */
+static void StepperPatternWrite(uint8_t pattern) {
+  for (size_t i = 0;i < stepper.phase_pins_len;i++) {
+    digitalWrite(stepper.phase_pins[i], pattern & (1 << i) ? HIGH : LOW);
+  }
+}
+
+// 
+/*! \brief  Writes the signature and the current side of the stepper to permanent storage. 
+    \return 
+            - true if EEPROM was successfully written
+            - false if an error occured */
 static bool StepperSideWrite(void) {
   Serial.print("Writing Stepper Side to storage... ");
   EEPROM.begin(EEPROM_SIZE);
