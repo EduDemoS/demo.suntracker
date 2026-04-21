@@ -45,6 +45,9 @@ using namespace HolisticSolutions;
 using namespace HolisticSolutions::WiFi;
 using namespace HolisticSolutions::Mqtt;
 
+#define DEMONSTRATOR_TYPE_NAME  "SUNFLOWER"
+#define MQTT_DEVICE_NAME        DEMONSTRATOR_TYPE_NAME MQTT_TEAM_ID
+
 #ifndef LED_BUILTIN_AUX
 #define LED_BUILTIN_AUX 16
 #endif
@@ -1000,10 +1003,20 @@ static bool MqttConnect()
   /* Only use this mode for experimental setups, 
     refrain from any productive use!*/
   mqtt.InsecureAccept();
-  mqtt.TopicPrefixSet("EduDemoS/" MQTT_CLIENT_ID);
+  
+  if ((strlen(MQTT_WORKSHOP_ID) > 0) 
+      && (strcmp(MQTT_WORKSHOP_ID, "undefined") != 0))
+  {
+    mqtt.TopicPrefixSet("EduDemoS/" MQTT_WORKSHOP_ID "/" MQTT_DEVICE_NAME);
+  }
+  else 
+  {
+    Serial.println("WARNING: Workshop ID not set");
+    mqtt.TopicPrefixSet("EduDemoS/WSxxx/" MQTT_DEVICE_NAME);
+  }
 
   mqtt.CredentialsSet(MQTT_USERNAME, MQTT_PASSWORD);
-  mqtt.connect(MQTT_CLIENT_ID, MQTT_SERVER, MQTT_PORT);
+  mqtt.connect(MQTT_DEVICE_NAME, MQTT_SERVER, MQTT_PORT);
 
   return true;
 }
