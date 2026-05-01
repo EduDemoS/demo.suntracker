@@ -417,6 +417,8 @@ static bool connectToWiFi()
 
   // Attempt WiFI connection:
   upstream.reset();
+  upstream.HostnameSet(MQTT_DEVICE_NAME);
+  
   upstream.connect(WIFI_SSID, WIFI_PASSWORD);
 
   return true;

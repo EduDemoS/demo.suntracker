@@ -105,6 +105,15 @@ bool WiFiManager::disconnected() {
     return m_fsm->CurrentStateGet() == WIFI_STATE_DISCONNECTED;
 }
 
+bool WiFiManager::HostnameSet(const char *hostname) {
+    return m_wifi.setHostname(hostname);
+}
+
+const char * WiFiManager::HostnameGet() {
+    return m_wifi.getHostname();
+}
+
+
 IPAddress WiFiManager::IpGet() {
     return m_wifi.localIP();
 }

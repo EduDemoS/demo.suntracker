@@ -44,6 +44,9 @@ namespace WiFi {
             void disconnect(void);
             bool disconnected();
 
+            bool         HostnameSet(const char *hostname);
+            const char * HostnameGet();
+
             IPAddress      IpGet();
             const uint8_t *MacGet();
             const String & MacGetString();
