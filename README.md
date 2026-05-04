@@ -11,8 +11,11 @@ This repository contains all necessary files and is structured as follows:
 - [code](code) contains program code to run the model
   - [Sun-Tracker preparation firmware](code/Sun-Tracker_Preparation)
   - [Sun-Tracker offline](code/Sun-Tracker)
+  - [Sun-Tracker assembly test 🌐 IoT ready](code/sun_tracker_assembly_test)
   - [Sun-Tracker 🌐 IoT ready](code/sun_tracker_iot)
 - [dashboards](dashboards) contains example dashboards for ThingsBoard (see [description below](#using-the-example-dashboards)).
+  - [Sun-Tracker assembly overview](dashboards/sunflower_assembly_overview.json) for visualizing the assembly progress of a complete group of sun flowers during a workshop
+  - [Sun-Tracker dashboard example](dashboards/sunflower_dashboard_example.json) visualizing telemetry of the sun tracker
 - [model](model) contains the printable 3D model
 
 ## Using the example dashboards
